@@ -1,0 +1,9 @@
+set up website that uses https
+website will have login capability (skip for now)
+once logged in, server presents cookie bound to network session id
+client has to navigate to page with xss attack
+attack uses cookie to forge request to server
+
+using self signed cert as website cert - need to fix that
+
+step 1: we need website to provide cookie

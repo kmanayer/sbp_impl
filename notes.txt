@@ -1,0 +1,15 @@
+set up website that uses https
+website will have login capability (skip for now)
+once logged in, server presents cookie bound to network session id
+client has to navigate to page with xss attack
+attack uses cookie to forge request to server
+
+using self signed cert as website cert - need to fix that
+
+step 1: we need website to provide cookie
+
+using reflection to get master key
+https://stackoverflow.com/questions/15566480/how-do-i-get-master-key-in-ssl-session-in-java
+
+how to enable reflection
+https://stackoverflow.com/questions/68225921/olp-cli-error-java-base-does-not-export-sun-security-util-to-unnamed-module-und
