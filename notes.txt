@@ -40,7 +40,19 @@ https://stackoverflow.com/questions/2308479/simple-java-https-server
 our current impl
 https://www.delftstack.com/howto/java/java-https-server/
 
-this might be the answer to cert issues
+this might be the answer to cert issues - how to create and import into jks
 https://docs.oracle.com/cd/E19798-01/821-1841/gjrgy/
+https://docs.oracle.com/javase/tutorial/security/toolsign/step3.html
+
 
 class delftstack.HTTPS_Server$MyHandler cannot access a member of class sun.security.ssl.SSLSessionImpl (in module java.base) with modifiers "private"
+
+
+creating your own CA and signing stuff
+https://priyalwalpita.medium.com/create-your-own-certificate-authority-47f49d0ba086
+
+creating your own SSL CA - haven't looked into it
+https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
+
+look into burp suite
+

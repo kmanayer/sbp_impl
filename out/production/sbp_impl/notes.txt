@@ -4,9 +4,13 @@ once logged in, server presents cookie bound to network session id
 client has to navigate to page with xss attack
 attack uses cookie to forge request to server
 
-using self signed cert as website cert - need to fix that
+using self signed cert as website cert - need to fix that?
+
 
 step 1: we need website to provide cookie
+
+what is reflection
+https://www.oracle.com/technical-resources/articles/java/javareflection.html#:~:text=Reflection%20is%20a%20feature%20in,its%20members%20and%20display%20them.
 
 using reflection to get master key
 https://stackoverflow.com/questions/15566480/how-do-i-get-master-key-in-ssl-session-in-java
@@ -14,5 +18,40 @@ https://stackoverflow.com/questions/15566480/how-do-i-get-master-key-in-ssl-sess
 how to enable reflection
 https://stackoverflow.com/questions/68225921/olp-cli-error-java-base-does-not-export-sun-security-util-to-unnamed-module-und
 
+some random impl of SSLSessionImpl.java
+https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/sun/security/ssl/SSLSessionImpl.java
+
+java doc of SSLSession
+https://docs.oracle.com/javase/7/docs/api/javax/net/ssl/SSLSession.html?is-external=true
+
+java doc of DatatypeConverter - might be nice for printing byte [] to hex
+https://docs.oracle.com/javase/7/docs/api/javax/xml/bind/DatatypeConverter.html
+
+creating self signed certs
+keytool -genkeypair -keyalg RSA -alias self_signed -keypass simulator -keystore lig.keystore -storepass simulator
+keytool -genkeypair -keyalg RSA -alias selfsigned -keystore testkey.jks -storepass password -validity 360 -keysize 2048
+
+current
+keytool -genkeypair -keyalg RSA -alias selfsigned -keystore testkey.jks -storepass password -validity 360 -keysize 2048
+
+simple HTTPS server
+https://stackoverflow.com/questions/2308479/simple-java-https-server
+
+our current impl
+https://www.delftstack.com/howto/java/java-https-server/
+
+this might be the answer to cert issues - how to create and import into jks
+https://docs.oracle.com/cd/E19798-01/821-1841/gjrgy/
+https://docs.oracle.com/javase/tutorial/security/toolsign/step3.html
+
 
 class delftstack.HTTPS_Server$MyHandler cannot access a member of class sun.security.ssl.SSLSessionImpl (in module java.base) with modifiers "private"
+
+
+creating your own CA and signing stuff
+https://priyalwalpita.medium.com/create-your-own-certificate-authority-47f49d0ba086
+
+creating your own SSL CA - haven't looked into it
+https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
+
+
