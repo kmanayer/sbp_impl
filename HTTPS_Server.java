@@ -1,4 +1,4 @@
-package delftstack;
+package sbp;
 
 import com.sun.net.httpserver.*;
 
@@ -8,14 +8,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.*;
-//import javax.xml.bind.DatatypeConverter;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.HttpCookie;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -24,13 +24,16 @@ import java.util.*;
 
 public class HTTPS_Server {
 
-    private static final String KEY_STORE = "mySecondTestKeyStore.jks";
-
+    private static final int port = 9000;
+    private static final String KEY_STORE = "certs/store.keys";
+    private static final String KEY_STORE_PASSWORD = "keystorepassword";
     private static final String KPS;
+
+    private static List<String> sessionTokens = new ArrayList<>();
+    private static boolean debugMode = false;
 
     static {
         try {
-            // do something similar to generateIV and generateNewSessionToken
             SecretKey Kp =  KeyGenerator.getInstance("AES").generateKey(); // 16
             KPS = Base64.getEncoder().encodeToString(Kp.getEncoded()); // 24
         } catch (NoSuchAlgorithmException e) {
@@ -38,124 +41,99 @@ public class HTTPS_Server {
         }
     }
 
-    private static List<String> sessionTokens = new ArrayList<>();
-
-    public static class MyHandler implements HttpHandler {
+    public static class ChangeHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange x) throws IOException {
-
             try {
-                SecretKey clientKey = getClientSpecificKey(x);
-
                 List<String> cookie = x.getRequestHeaders().get("Cookie");
-                if (null != cookie) {
-                    String encryptedToken = HttpCookie.parse(cookie.get(0)).get(0).getValue();
-                    String token = Optional.ofNullable(decrypt(encryptedToken, clientKey)).orElse("decryption failed");
-                    String response = "did you give us the right token on the right channel? " + sessionTokens.contains(token) + "\n";
+                if (cookie == null) {
+                    System.out.println("Change request, no cookie found, ignoring request");
+                    return;
+                }
+
+                String response;
+                String encryptedToken = HttpCookie.parse(cookie.get(0)).get(0).getValue();
+                SecretKey clientKey = getClientSpecificKey(x);
+                String token = Optional.ofNullable(decrypt(encryptedToken, clientKey)).orElse("decryption failed");
+                if (debugMode) {
+                    response = "did you give us the right token on the right channel? " + sessionTokens.contains(token) + "\n";
                     response = response.concat("your encrypted token: " + encryptedToken + "\n");
                     response = response.concat("your decrypted token: " + token + "\n");
                     response = response.concat("your client key: " + Base64.getEncoder().encodeToString(clientKey.getEncoded()) + "\n");
-                    x.sendResponseHeaders(200, response.getBytes().length);
-                    x.getResponseHeaders().add("Content-Type", "text/html");
-                    OutputStream Output_Stream = x.getResponseBody();
-                    Output_Stream.write(response.getBytes());
-                    Output_Stream.close();
+                } else if (sessionTokens.contains(token)) {
+                    response = "Valid change request received, request will be honored!";
                 } else {
-                    String token = generateNewSessionToken();
-                    sessionTokens.add(token);
-                    String encryptedToken = encrypt(token, clientKey);
-                    HttpCookie newCookie = new HttpCookie("session_token", encryptedToken);
-                    newCookie.setComment("This is a test session token");
-                    //newCookie.setDomain("localhost");
-                    newCookie.setPath("/test");
-
-                    String response = "This is the response from the server, we didn't find a cookie so we are providing you with one here\n"; // need to inject malicious code here
-                    response = response.concat("your encrypted cookie: " + newCookie + "\n");
-                    response = response.concat("your plain session token: " + token + "\n");
-                    response = response.concat("your client key: " + Base64.getEncoder().encodeToString(clientKey.getEncoded()) + "\n");
-                    x.sendResponseHeaders(200, response.getBytes().length);
-                    x.getResponseHeaders().add("Content-Type", "text/html");
-                    x.getResponseHeaders().add("Set-Cookie", newCookie.toString());
-                    OutputStream Output_Stream = x.getResponseBody();
-                    Output_Stream.write(response.getBytes());
-                    Output_Stream.close();
+                    response = "Invalid change request received, request will be ignored";
                 }
+                System.out.println(response);
 
             } catch (Exception e) {
                 System.out.println(e.getMessage());
                 throw new RuntimeException(e);
             }
         }
-
-        private  SecretKey getClientSpecificKey(HttpExchange x) throws Exception {
-            HttpsExchange xs = (HttpsExchange) x;
-            Class<?> c = Class.forName("sun.security.ssl.SSLSessionImpl");
-            Field masterSecretField = c.getDeclaredField("resumptionMasterSecret");
-            masterSecretField.setAccessible(true);
-            SecretKey k = (SecretKey)masterSecretField.get(xs.getSSLSession()); // 48
-            String ks = Base64.getEncoder().encodeToString(k.getEncoded()); // 64
-            String kcs = KPS.concat(ks); // 88
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(kcs.getBytes()); // 32 after digest
-            String kcsh = Base64.getEncoder().encodeToString(md.digest()); // 44
-            byte[] kcb = Base64.getDecoder().decode(kcsh);
-            return new SecretKeySpec(kcb, 0, kcb.length, "AES");
-        }
-
-        private static String generateNewSessionToken() {
-            byte[] token = new byte[16];
-            new SecureRandom().nextBytes(token);
-            return Base64.getEncoder().encodeToString(token);
-        }
-
-        //https://www.baeldung.com/java-aes-encryption-decryption
-        private static String encrypt(String input, SecretKey key) throws Exception {
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            IvParameterSpec iv = generateIV(); // 16
-            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
-            byte[] cipherText = cipher.doFinal(input.getBytes()); // 32
-            String cipherTextString = Base64.getEncoder().encodeToString(cipherText); // 44
-            String ivString = Base64.getEncoder().encodeToString(iv.getIV()); // 24
-            return ivString.concat(cipherTextString);
-        }
-
-        private static IvParameterSpec generateIV() {
-            byte[] iv = new byte[16];
-            new SecureRandom().nextBytes(iv);
-            return new IvParameterSpec(iv);
-        }
-
-        private static String decrypt(String input, SecretKey key) {
-            try {
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-                byte[] iv = Base64.getDecoder().decode(input.substring(0,24));
-                byte[] cipherText = Base64.getDecoder().decode(input.substring(24));
-                cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
-                return new String(cipher.doFinal(cipherText));
-            } catch (Exception e) {
-                return null;
-            }
-        }
-
-
     }
 
+    public static class AccountHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange x) throws IOException {
 
+            try {
+                SecretKey clientKey = getClientSpecificKey(x);
+                String token = generateNewSessionToken();
+                sessionTokens.add(token);
+                String encryptedToken = encrypt(token, clientKey);
+                HttpCookie newCookie = new HttpCookie("session_token", encryptedToken);
+                x.getResponseHeaders().add("Set-Cookie", newCookie.toString());
+
+                String response;
+                if (debugMode) {
+                    response = "This is the response from the server, we didn't find a cookie so we are providing you with one here\n";
+                    response = response.concat("your encrypted cookie: " + newCookie + "\n");
+                    response = response.concat("your plain session token: " + token + "\n");
+                    response = response.concat("your client key: " + Base64.getEncoder().encodeToString(clientKey.getEncoded()) + "\n");
+
+                } else {
+                    Path filePath = Path.of("html/account.html");
+                    response = Files.readString(filePath);
+                }
+
+                x.sendResponseHeaders(200, response.getBytes().length);
+                OutputStream Output_Stream = x.getResponseBody();
+                Output_Stream.write(response.getBytes());
+                Output_Stream.close();
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static class LoginHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange x) throws IOException {
+            Path filePath = Path.of("html/login.html");
+            String response = Files.readString(filePath);
+            x.sendResponseHeaders(200, response.getBytes().length);
+            OutputStream Output_Stream = x.getResponseBody();
+            Output_Stream.write(response.getBytes());
+            Output_Stream.close();
+        }
+    }
 
     public static void main(String[] args) throws Exception {
-
         try {
             // setup the socket address
-            InetSocketAddress Inet_Address = new InetSocketAddress(9000);
+            InetSocketAddress Inet_Address = new InetSocketAddress(port);
 
             //initialize the HTTPS server
             HttpsServer HTTPS_Server = HttpsServer.create(Inet_Address, 0);
             SSLContext SSL_Context = SSLContext.getInstance("TLS");
 
             // initialise the keystore
-            char[] Password = "password".toCharArray();
             KeyStore Key_Store = KeyStore.getInstance("JKS");
             FileInputStream Input_Stream = new FileInputStream(KEY_STORE);
+            char[] Password = KEY_STORE_PASSWORD.toCharArray();
             Key_Store.load(Input_Stream, Password);
 
             // setup the key manager factory
@@ -188,7 +166,9 @@ public class HTTPS_Server {
                     }
                 }
             });
-            HTTPS_Server.createContext("/test", new MyHandler());
+            HTTPS_Server.createContext("/", new LoginHandler());
+            HTTPS_Server.createContext("/account", new AccountHandler());
+            HTTPS_Server.createContext("/change", new ChangeHandler());
             HTTPS_Server.setExecutor(null); // creates a default executor
             HTTPS_Server.start();
 
@@ -196,6 +176,55 @@ public class HTTPS_Server {
             System.out.println("Failed to create HTTPS server on port " + 9000 + " of localhost");
             exception.printStackTrace();
 
+        }
+    }
+
+    private static SecretKey getClientSpecificKey(HttpExchange x) throws Exception {
+        HttpsExchange xs = (HttpsExchange) x;
+        Class<?> c = Class.forName("sun.security.ssl.SSLSessionImpl");
+        Field masterSecretField = c.getDeclaredField("resumptionMasterSecret");
+        masterSecretField.setAccessible(true);
+        SecretKey k = (SecretKey)masterSecretField.get(xs.getSSLSession()); // 48
+        String ks = Base64.getEncoder().encodeToString(k.getEncoded()); // 64
+        String kcs = KPS.concat(ks); // 88
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.update(kcs.getBytes()); // 32 after digest
+        String kcsh = Base64.getEncoder().encodeToString(md.digest()); // 44
+        byte[] kcb = Base64.getDecoder().decode(kcsh);
+        return new SecretKeySpec(kcb, 0, kcb.length, "AES");
+    }
+
+    private static String generateNewSessionToken() {
+        byte[] token = new byte[16];
+        new SecureRandom().nextBytes(token);
+        return Base64.getEncoder().encodeToString(token);
+    }
+
+    private static String encrypt(String input, SecretKey key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        IvParameterSpec iv = generateIV(); // 16
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        byte[] cipherText = cipher.doFinal(input.getBytes()); // 32
+        String cipherTextString = Base64.getEncoder().encodeToString(cipherText); // 44
+        String ivString = Base64.getEncoder().encodeToString(iv.getIV()); // 24
+        return ivString.concat(cipherTextString);
+    }
+
+    private static IvParameterSpec generateIV() {
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        return new IvParameterSpec(iv);
+    }
+
+    private static String decrypt(String input, SecretKey key) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            byte[] iv = Base64.getDecoder().decode(input.substring(0,24));
+            byte[] cipherText = Base64.getDecoder().decode(input.substring(24));
+            cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+            return new String(cipher.doFinal(cipherText));
+        } catch (Exception e) {
+            return null;
         }
     }
 

@@ -54,4 +54,36 @@ https://priyalwalpita.medium.com/create-your-own-certificate-authority-47f49d0ba
 creating your own SSL CA - haven't looked into it
 https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
 
+look into burp suite
 
+following this fixed the not secure in chrome issue
+https://stackoverflow.com/questions/7580508/getting-chrome-to-accept-self-signed-localhost-certificate
+
+used this to import key pair into java key store
+https://docs.oracle.com/en/database/other-databases/nosql-database/21.2/security/import-key-pair-java-keystore.html
+
+convert crt to pem
+https://stackoverflow.com/questions/4691699/how-to-convert-crt-to-pem
+
+later - fix cert issue - done!
+fix cookie issue - done!
+confirm initial functionality - fixing cert broke it in chrome, firefox only maintains resumptiontlskey for ~30sec I think
+
+next - create page with xss attack
+
+
+need to setup
+
+    // trying to fix keep alive issue
+//                x.getRequestBody().readAllBytes();
+//                x.getRequestBody().close();
+//                x.getResponseHeaders().add("Connection", "Keep-Alive");
+//                x.getResponseHeaders().add("Keep-Alive", "timeout=3600000, max=100");
+
+
+//https://www.baeldung.com/java-aes-encryption-decryption
+
+                newCookie.setComment("This is a test session token");
+                newCookie.setDomain("localhost");
+                newCookie.setPortlist("9000");
+                newCookie.setPath("/test");
