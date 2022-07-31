@@ -15,16 +15,16 @@ To run the server, run the following: \
 Make sure to import `certs\myCA.pem` as a Certificate Authority into your browser / System Certificates
 
 Using a browser, visit `https://localhost:9000/login` \
-Click the button to simulate the login / client authentication process. \
+Click the button to simulate the login / client autheication process. \
 You will be given an application session token in the form of a cookie, \
 and you will be taken to the account landing page. \
 This page includes malicious code that will forge and send a state-changing request to the server. \
 You can check the server output in the terminal to see if the server will honor or ignore this malicious request.
 
 General information about this implementation:
-1. There are 3 endpoints for this server:\
-   1. The `/login` endpoint takes the user to the `Login` page \
-   2. The `/account` endpoint is the user's `Account` landing page \
+1. There are 3 endpoints for this server: 
+   1. The `/login` endpoint takes the user to the `Login` page 
+   2. The `/account` endpoint is the user's `Account` landing page 
    3. The `/change` endpoint accepts state-changing requests for the account
 2. When the user clicks on the button in the `Login` page, \
 they are direct to the `/account` endpoint and the server does the following:
