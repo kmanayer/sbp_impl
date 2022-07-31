@@ -44,6 +44,7 @@ public class HTTPS_Server {
     public static class ChangeHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange x) throws IOException {
+            System.out.println("A change request was received.");
             try {
                 List<String> cookie = x.getRequestHeaders().get("Cookie");
                 if (cookie == null) {
@@ -77,7 +78,7 @@ public class HTTPS_Server {
     public static class AccountHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange x) throws IOException {
-
+            System.out.println("A user is attempting to access the account page.");
             try {
                 SecretKey clientKey = getClientSpecificKey(x);
                 String token = generateNewSessionToken();
@@ -112,6 +113,7 @@ public class HTTPS_Server {
     public static class LoginHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange x) throws IOException {
+            System.out.println("A user is requesting the login page");
             Path filePath = Path.of("html/login.html");
             String response = Files.readString(filePath);
             x.sendResponseHeaders(200, response.getBytes().length);
@@ -160,20 +162,19 @@ public class HTTPS_Server {
                         SSLParameters SSL_Parameters = SSL_Context.getSupportedSSLParameters();
                         params.setSSLParameters(SSL_Parameters);
                         System.out.println("The HTTPS server is connected");
-
                     } catch (Exception ex) {
                         System.out.println("Failed to create the HTTPS port");
                     }
                 }
             });
-            HTTPS_Server.createContext("/", new LoginHandler());
+            HTTPS_Server.createContext("/login" , new LoginHandler());
             HTTPS_Server.createContext("/account", new AccountHandler());
             HTTPS_Server.createContext("/change", new ChangeHandler());
             HTTPS_Server.setExecutor(null); // creates a default executor
             HTTPS_Server.start();
 
         } catch (Exception exception) {
-            System.out.println("Failed to create HTTPS server on port " + 9000 + " of localhost");
+            System.out.println("Failed to create HTTPS server on port " + port + " of localhost");
             exception.printStackTrace();
 
         }
